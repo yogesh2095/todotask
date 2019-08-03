@@ -3,6 +3,30 @@
 // This file was automatically generated and should not be edited.
 
 // ====================================================
+// GraphQL mutation operation: ChangeStatusMutation
+// ====================================================
+
+export interface ChangeStatusMutation_changeStatus {
+  __typename: "Task";
+  id: number;
+  title: string;
+  status: TaskStatus;
+}
+
+export interface ChangeStatusMutation {
+  changeStatus: ChangeStatusMutation_changeStatus | null;
+}
+
+export interface ChangeStatusMutationVariables {
+  id: number;
+  status: TaskStatus;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// This file was automatically generated and should not be edited.
+
+// ====================================================
 // GraphQL mutation operation: CreateTaskMutation
 // ====================================================
 
@@ -19,6 +43,29 @@ export interface CreateTaskMutation {
 
 export interface CreateTaskMutationVariables {
   input: CreateTaskInput;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL mutation operation: DeleteTaskMutation
+// ====================================================
+
+export interface DeleteTaskMutation_deleteTask {
+  __typename: "Task";
+  id: number;
+  title: string;
+  status: TaskStatus;
+}
+
+export interface DeleteTaskMutation {
+  deleteTask: DeleteTaskMutation_deleteTask | null;
+}
+
+export interface DeleteTaskMutationVariables {
+  id: number;
 }
 
 /* tslint:disable */
