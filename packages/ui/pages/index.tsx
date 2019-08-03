@@ -1,14 +1,11 @@
 import { Layout } from "../components/Layout";
 import TASKS_QUERY from "../graphql/tasks.graphql";
-import { Query, withApollo } from "react-apollo";
-import DELETE_TASK_MUTATION from "../graphql/delete-task.graphql";
-import CHANGE_STATUS_MUTATION from "../graphql/change-status.graphql";
-
+import { Query, withApollo, WithApolloClient } from "react-apollo";
 import {
   TasksQuery,
   TasksQueryVariables,
-  DeleteTaskMutationVariables,
   DeleteTaskMutation,
+  DeleteTaskMutationVariables,
   TaskStatus,
   ChangeStatusMutation,
   ChangeStatusMutationVariables
@@ -17,9 +14,19 @@ import { Loader } from "../components/Loader";
 import { Task } from "../components/Task";
 import { WrappedCreateTaskForm } from "../components/CreateTaskForm";
 import { ApolloClient } from "apollo-boost";
+import DELETE_TASK_MUTATION from "../graphql/delete-task.graphql";
 import { useCallback } from "react";
+import CHANGE_STATUS_MUTATION from "../graphql/change-status.graphql";
+import { TaskFilter } from "../components/TaskFilter";
+import { NextFunctionComponent } from "next";
 
 class ApolloTasksQuery extends Query<TasksQuery, TasksQueryVariables> {}
+
+interface IntialProps {
+  taskFilter?: TaskFilter;
+}
+
+interface Props extends IntialProps {}
 
 const deleteTask = async (id: number, apollo: ApolloClient<any>) => {
   const result = await apollo.mutate<
@@ -45,28 +52,57 @@ const deleteTask = async (id: number, apollo: ApolloClient<any>) => {
 const changeTaskStatus = async (
   id: number,
   status: TaskStatus,
+  taskFilter: TaskFilter,
   apollo: ApolloClient<any>
 ) => {
   await apollo.mutate<ChangeStatusMutation, ChangeStatusMutationVariables>({
     mutation: CHANGE_STATUS_MUTATION,
-    variables: { id, status }
+    variables: { id, status },
+    update: cache => {
+      const tasksCache = cache.readQuery<TasksQuery, TasksQueryVariables>({
+        query: TASKS_QUERY,
+        variables: { status: taskFilter.status }
+      });
+
+      if (tasksCache) {
+        cache.writeQuery<TasksQuery, TasksQueryVariables>({
+          query: TASKS_QUERY,
+          variables: { status: taskFilter.status },
+          data: {
+            tasks: taskFilter.status
+              ? tasksCache.tasks.filter(
+                  task => task.status === taskFilter.status
+                )
+              : tasksCache.tasks
+          }
+        });
+      }
+    }
   });
 };
 
-export default withApollo(({ client }) => {
+const IndexPage: NextFunctionComponent<
+  WithApolloClient<Props>,
+  IntialProps
+> = ({ client, taskFilter }) => {
   const deleteTaskCallback = useCallback(
     (id: number) => deleteTask(id, client),
     []
   );
 
   const changeStatusCallback = useCallback(
-    (id: number, status: TaskStatus) => changeTaskStatus(id, status, client),
-    []
+    (id: number, status: TaskStatus) =>
+      changeTaskStatus(id, status, taskFilter, client),
+    [taskFilter]
   );
 
   return (
     <Layout>
-      <ApolloTasksQuery query={TASKS_QUERY}>
+      <ApolloTasksQuery
+        query={TASKS_QUERY}
+        variables={taskFilter}
+        fetchPolicy="cache-and-network"
+      >
         {({ error, loading, data, refetch }) => {
           if (error) {
             return <div>Something wrong has happened</div>;
@@ -78,18 +114,21 @@ export default withApollo(({ client }) => {
               {loading ? (
                 <Loader />
               ) : (
-                <ul className="tasks">
-                  {tasks.map((task, i) => {
-                    return (
-                      <Task
-                        key={i}
-                        {...task}
-                        onDeleteTask={deleteTaskCallback}
-                        onTaskStatusChange={changeStatusCallback}
-                      />
-                    );
-                  })}
-                </ul>
+                <div>
+                  <ul className="tasks">
+                    {tasks.map((task, i) => {
+                      return (
+                        <Task
+                          key={i}
+                          {...task}
+                          onDeleteTask={deleteTaskCallback}
+                          onTaskStatusChange={changeStatusCallback}
+                        />
+                      );
+                    })}
+                  </ul>
+                  <TaskFilter filter={taskFilter} />
+                </div>
               )}
             </div>
           );
@@ -97,4 +136,20 @@ export default withApollo(({ client }) => {
       </ApolloTasksQuery>
     </Layout>
   );
-});
+};
+
+IndexPage.getInitialProps = ctx => {
+  const { status } = ctx.query;
+
+  return {
+    taskFilter: {
+      status: Array.isArray(status)
+        ? (status[0] as TaskStatus)
+        : status
+        ? (status as TaskStatus)
+        : undefined
+    }
+  };
+};
+
+export default withApollo(IndexPage);
