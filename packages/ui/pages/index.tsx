@@ -15,12 +15,21 @@ import { Task } from "../components/Task";
 import { WrappedCreateTaskForm } from "../components/CreateTaskForm";
 import { ApolloClient } from "apollo-boost";
 import DELETE_TASK_MUTATION from "../graphql/delete-task.graphql";
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 import CHANGE_STATUS_MUTATION from "../graphql/change-status.graphql";
 import { TaskFilter } from "../components/TaskFilter";
 import { NextFunctionComponent } from "next";
+import { Notification, NotificationButtons } from "../components/Notifiction";
 
 class ApolloTasksQuery extends Query<TasksQuery, TasksQueryVariables> {}
+
+interface State {
+  showNotification: boolean;
+}
+
+const initialState: State = {
+  showNotification: false
+};
 
 interface IntialProps {
   taskFilter?: TaskFilter;
@@ -96,8 +105,36 @@ const IndexPage: NextFunctionComponent<
     [taskFilter]
   );
 
+  const [state, setState] = useState(initialState);
+
+  useEffect(() => {
+    const showOffer = sessionStorage.getItem("showOffer");
+    setState({
+      showNotification: !showOffer || showOffer === "1"
+    });
+    console.log("USE EFFECT");
+  }, []);
+
+  const handleOnClickDismiss = (e: React.MouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    setState({ showNotification: false });
+    sessionStorage.setItem("showOffer", "0");
+  };
   return (
     <Layout>
+      {state.showNotification && (
+        <Notification>
+          <p>
+            Limited time offer! Get our <em>Pro</em> Subscription
+          </p>
+          <NotificationButtons>
+            <a href="#">Learn More</a>
+            <a href="#" onClick={handleOnClickDismiss}>
+              Dismiss
+            </a>
+          </NotificationButtons>
+        </Notification>
+      )}
       <ApolloTasksQuery
         query={TASKS_QUERY}
         variables={taskFilter}
